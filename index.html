@@ -338,6 +338,20 @@
       margin-bottom: 8px;
     }
     .hidden { display: none !important; }
+
+    /* 手机端 wizard：第一步 / 第二步切换 */
+    .mobile-only { display: none; }
+    @media (max-width: 900px) {
+      .mobile-only { display: inline-flex; }
+      .card.mobile-step-hidden { display: none !important; }
+      .card.step-enter {
+        animation: stepEnter .28s ease-out both;
+      }
+    }
+    @keyframes stepEnter {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
     .foot {
       max-width: 1100px;
       margin: 0 auto;
@@ -419,7 +433,7 @@
 
       <!-- 右侧：操作区 -->
       <section>
-        <div class="card">
+        <div class="card" id="step1Card">
           <div class="step-title">第一步：填写 CDKEY</div>
           <p class="sub">请输入收到的卡密，系统会反馈当前可用状态。</p>
 
@@ -444,7 +458,10 @@
         </div>
 
         <div class="card hidden" id="activateCard" style="margin-top:22px;">
-          <div class="step-title">第二步：提交 Session</div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px;">
+            <div class="step-title" style="margin-bottom:0;">第二步：提交 Session</div>
+            <button type="button" class="btn btn-ghost mobile-only" id="backStep1" style="padding:6px 12px; font-size:12.5px;">← 重输卡密</button>
+          </div>
           <p class="sub">打开 AuthSession 页面，把页面里显示的全部 JSON 内容复制粘贴到这里。</p>
 
           <div class="field">
@@ -480,6 +497,8 @@
       cdkey: document.getElementById("cdkey"),
       checkBtn: document.getElementById("checkBtn"),
       resetBtn: document.getElementById("resetBtn"),
+      step1Card: document.getElementById("step1Card"),
+      backStep1: document.getElementById("backStep1"),
       queryNotice: document.getElementById("queryNotice"),
       completedCard: document.getElementById("completedCard"),
       accountText: document.getElementById("accountText"),
@@ -537,12 +556,15 @@
         const wasHidden = els.activateCard.classList.contains("hidden");
         els.activateCard.classList.remove("hidden");
         setNotice(els.queryNotice, "卡密可用，请继续提交 Session。", "success");
-        // 手机端：第二步刚出现时，自动平滑滚动过去
+        // 手机端 wizard：隐藏第一步，淡入第二步
         if (wasHidden && window.matchMedia("(max-width: 900px)").matches) {
-          setTimeout(() => {
-            els.activateCard.scrollIntoView({ behavior: "smooth", block: "start" });
-            els.sessionInfo.focus({ preventScroll: true });
-          }, 120);
+          els.step1Card.classList.add("mobile-step-hidden");
+          els.activateCard.classList.remove("step-enter");
+          // 触发重排让动画重新播放
+          void els.activateCard.offsetWidth;
+          els.activateCard.classList.add("step-enter");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          setTimeout(() => els.sessionInfo.focus({ preventScroll: true }), 200);
         }
       } else {
         els.activateCard.classList.add("hidden");
@@ -637,14 +659,28 @@
       els.sessionInfo.value = "";
       els.completedCard.classList.remove("show");
       els.activateCard.classList.add("hidden");
+      els.activateCard.classList.remove("step-enter");
+      els.step1Card.classList.remove("mobile-step-hidden");
       setNotice(els.queryNotice, "请先填写卡密并查询状态。");
       setNotice(els.activateNotice, "等待提交充值。");
       els.cdkey.focus();
     }
 
+    // 手机端：从第二步返回第一步（恢复输入框，可重新查询）
+    function backToStep1() {
+      els.activateCard.classList.add("hidden");
+      els.activateCard.classList.remove("step-enter");
+      els.step1Card.classList.remove("mobile-step-hidden");
+      els.cdkey.disabled = false;
+      lockedCdkey = "";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setTimeout(() => els.cdkey.focus({ preventScroll: true }), 200);
+    }
+
     els.checkBtn.addEventListener("click", checkCdkey);
     els.activateBtn.addEventListener("click", activateCdkey);
     els.resetBtn.addEventListener("click", resetFlow);
+    if (els.backStep1) els.backStep1.addEventListener("click", backToStep1);
     els.cdkey.addEventListener("keydown", (event) => {
       if (event.key === "Enter") checkCdkey();
     });
