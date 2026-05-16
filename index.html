@@ -54,6 +54,48 @@
       color: var(--text-secondary);
       margin-bottom: 22px;
     }
+    .steps-hero {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 6px;
+    }
+    .steps-hero .step-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 8px 16px 8px 8px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+    .steps-hero .step-pill .n {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #000;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .steps-hero .step-arrow {
+      color: var(--primary);
+      font-weight: 800;
+      font-size: 16px;
+    }
+    @media (max-width: 480px) {
+      .steps-hero { gap: 6px; }
+      .steps-hero .step-pill { padding: 6px 12px 6px 6px; font-size: 13px; }
+      .steps-hero .step-arrow { font-size: 13px; }
+    }
     .pill-btn {
       display: inline-flex;
       align-items: center;
@@ -326,8 +368,13 @@
 <body>
   <section class="hero">
     <h1>ChatGPT Plus 充值</h1>
-    <p>验证卡密后填写 Session，提交任务并获取结果。</p>
-    <a class="pill-btn" href="#flow">🔍 卡密批量查询</a>
+    <div class="steps-hero">
+      <span class="step-pill"><span class="n">1</span>卡密验证</span>
+      <span class="step-arrow">→</span>
+      <span class="step-pill"><span class="n">2</span>验证 Token</span>
+      <span class="step-arrow">→</span>
+      <span class="step-pill"><span class="n">3</span>确认充值</span>
+    </div>
   </section>
 
   <main id="flow">
