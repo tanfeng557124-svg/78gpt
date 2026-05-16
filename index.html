@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChatGPT Plus 充值</title>
+  <style>
+    /* ====== 皮肤：沿用原始版的配色与质感 ====== */
+    :root {
+      --bg: #ffffff;
+      --bg-card: #ffffff;
+      --bg-elevated: #f9fafb;
+      --border: #e5e7eb;
+      --primary: #00a86b;
+      --primary-light: #10b981;
+      --primary-dark: #047857;
+      --accent: #f59e0b;
+      --text: #111111;
+      --text-secondary: #6b7280;
+      --text-tertiary: #9ca3af;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+      background: #f9fafb;
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+
+    /* ====== 布局：沿用截图版的骨架 ====== */
+    .hero {
+      padding: 64px 24px 30px;
+      text-align: center;
+      background: linear-gradient(180deg, #f0fdf4 0%, #f9fafb 100%);
+      border-bottom: 1px solid rgba(229,231,235,0.7);
+    }
+    .hero h1 {
+      font-size: clamp(30px, 5.5vw, 44px);
+      font-weight: 800;
+      letter-spacing: 0;
+      color: var(--text);
+      margin-bottom: 14px;
+    }
+    .hero p {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-bottom: 22px;
+    }
+    .pill-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--primary);
+      color: #000;
+      border: 0;
+      border-radius: 999px;
+      padding: 11px 24px;
+      font-size: 13.5px;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: 0 8px 24px rgba(0,168,107,0.18);
+      transition: transform 0.2s, background 0.2s;
+    }
+    .pill-btn:hover { background: var(--primary-light); transform: translateY(-1px); }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 34px 24px 56px;
+    }
+    .shell {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+    .side-card { position: sticky; top: 24px; }
+
+    .card h2 {
+      font-size: 22px;
+      line-height: 1.25;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .card .sub {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    /* 操作指南步骤 */
+    .steps { display: grid; }
+    .step {
+      display: flex;
+      gap: 12px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .step:last-child { border-bottom: 0; padding-bottom: 2px; }
+    .step:first-of-type { padding-top: 2px; }
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #000;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 900;
+      flex-shrink: 0;
+    }
+    .step-body strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+    .step-body p {
+      color: var(--text-secondary);
+      font-size: 12.5px;
+      line-height: 1.55;
+      margin-bottom: 0;
+    }
+    .step-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      background: var(--primary);
+      color: #000;
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 15px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .step-btn:hover { background: var(--primary-light); transform: translateY(-1px); }
+
+    /* 表单 */
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-bottom: 7px;
+    }
+    .field label .req { color: var(--danger); margin-right: 3px; }
+    .input-line {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg-elevated);
+      color: var(--text);
+      font: inherit;
+      font-size: 15px;
+      padding: 14px 14px;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    }
+    .input-line::placeholder { color: var(--text-tertiary); }
+    textarea.input-line {
+      min-height: 136px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .input-line:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(0,168,107,0.08);
+    }
+    .input-line:disabled { opacity: 0.7; cursor: not-allowed; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 0;
+      border-radius: 12px;
+      font: inherit;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      padding: 13px 22px;
+      transition: background 0.2s, transform 0.2s, opacity 0.2s, border-color 0.2s;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #000;
+      box-shadow: 0 8px 24px rgba(0,168,107,0.18);
+    }
+    .btn-primary:hover { background: var(--primary-light); transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .btn-ghost {
+      background: var(--bg-card);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--primary); }
+    .actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .notice {
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      margin-top: 14px;
+    }
+    .notice.success { color: #065f46; background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.25); }
+    .notice.error { color: #991b1b; background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.25); }
+    .notice.warning { color: #92400e; background: rgba(245,158,11,0.09); border-color: rgba(245,158,11,0.25); }
+
+    .result-card { display: none; margin-top: 18px; }
+    .result-card.show { display: block; animation: fade 0.24s ease; }
+    .result-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+    .result-head h3 { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+    .result-head p { color: var(--text-secondary); font-size: 13px; }
+    .chip {
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      color: #065f46;
+      background: rgba(16,185,129,0.12);
+      border: 1px solid rgba(16,185,129,0.22);
+      white-space: nowrap;
+    }
+    .chip.warn { color: #92400e; background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.22); }
+    .chip.error { color: #991b1b; background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.22); }
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 10px;
+    }
+    .result-item {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 11px 12px;
+      min-width: 0;
+    }
+    .result-item .k { color: var(--text-tertiary); font-size: 12px; margin-bottom: 4px; }
+    .result-item .v { font-weight: 800; font-size: 14px; word-break: break-all; color: var(--text); }
+
+    .divider {
+      margin: 20px 0 0;
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+    }
+    .step-title {
+      font-size: 22px;
+      line-height: 1.25;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .hidden { display: none !important; }
+    .foot {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 22px 24px 38px;
+      color: var(--text-tertiary);
+      font-size: 12px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+    @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      .side-card { position: static; }
+    }
+    @media (max-width: 640px) {
+      .hero { padding: 38px 18px 24px; }
+      main { padding: 24px 16px 42px; }
+      .card { padding: 18px; border-radius: 14px; }
+      .actions { display: grid; grid-template-columns: 1fr; }
+      .actions .btn { width: 100%; }
+      .result-grid { grid-template-columns: 1fr; }
+      .result-head { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <h1>ChatGPT Plus 充值</h1>
+    <p>验证卡密后填写 Session，提交任务并获取结果。</p>
+    <a class="pill-btn" href="#flow">🔍 卡密批量查询</a>
+  </section>
+
+  <main id="flow">
+    <div class="shell">
+      <!-- 左侧：操作指南 -->
+      <aside class="card side-card">
+        <h2>操作指南</h2>
+        <p class="sub">跟着 4 步走即可完成充值，先验证卡密，再提交任务。</p>
+        <div class="steps">
+          <div class="step">
+            <span class="step-num">01</span>
+            <div class="step-body">
+              <strong>输入卡密并验证</strong>
+              <p>填写卡密并点击「验证卡密」，确认卡密未使用且商品正确。</p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-num">02</span>
+            <div class="step-body">
+              <strong>登录 ChatGPT</strong>
+              <p>先登录 ChatGPT，确保账号已在线。</p>
+              <a class="step-btn" href="https://chatgpt.com" target="_blank" rel="noopener noreferrer">打开 ChatGPT</a>
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-num">03</span>
+            <div class="step-body">
+              <strong>获取 AuthSession</strong>
+              <p>打开 AuthSession 页面，复制完整 JSON 内容并粘贴到输入框。</p>
+              <a class="step-btn" href="https://chatgpt.com/api/auth/session" target="_blank" rel="noopener noreferrer">打开 AuthSession 页面</a>
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-num">04</span>
+            <div class="step-body">
+              <strong>确认账号后充值</strong>
+              <p>确认提交后耐心等待 1 分钟左右会自动充值完毕。</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- 右侧：操作区 -->
+      <section>
+        <div class="card">
+          <div class="step-title">第一步：填写 CDKEY</div>
+          <p class="sub">请输入收到的卡密，系统会反馈当前可用状态。</p>
+
+          <div class="field">
+            <label for="cdkey"><span class="req">*</span>CDKEY 卡密</label>
+            <input class="input-line" id="cdkey" placeholder="例如：XXXX-XXXX" autocomplete="off" maxlength="96" />
+          </div>
+
+          <div class="actions">
+            <button class="btn btn-primary" type="button" id="checkBtn">🔍 查询卡密</button>
+            <button class="btn btn-ghost" type="button" id="resetBtn">重新填写</button>
+          </div>
+          <div class="notice" id="queryNotice">请先填写卡密并查询状态。</div>
+
+          <div class="result-card" id="completedCard">
+            <div class="divider"></div>
+            <div class="result-grid">
+              <div class="result-item"><div class="k">绑定账号</div><div class="v" id="accountText">-</div></div>
+              <div class="result-item"><div class="k">完成时间</div><div class="v" id="completedAt">-</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card hidden" id="activateCard" style="margin-top:22px;">
+          <div class="step-title">第二步：提交 Session</div>
+          <p class="sub">打开 AuthSession 页面，把页面里显示的全部 JSON 内容复制粘贴到这里。</p>
+
+          <div class="field">
+            <label for="sessionInfo"><span class="req">*</span>账号 Session</label>
+            <textarea class="input-line" id="sessionInfo" placeholder="请粘贴 AuthSession 页面显示的完整 JSON 内容"></textarea>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn-primary" type="button" id="activateBtn">提交充值</button>
+            <a class="btn btn-ghost" href="https://chatgpt.com/api/auth/session" target="_blank" rel="noopener noreferrer">打开 AuthSession 页面</a>
+          </div>
+          <div class="notice warning">请确认浏览器里登录的是要充值的 ChatGPT 账号。</div>
+          <div class="notice" id="activateNotice">等待提交充值。</div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div class="foot">
+    充值过程中请不要退出 ChatGPT 账号。提交后如长时间未到账，请联系客服处理。
+  </div>
+
+  <script>
+    // ===== 换域名只改这一行 =====
+    // 页面与 API 同域名时填 "/api"；不同域名时填完整地址（结尾不要带斜杠）
+    const API_BASE = "https://gpt.86gamestore.com/api";
+
+    function apiUrl(path) {
+      return `${API_BASE}${path}`;
+    }
+
+    const els = {
+      cdkey: document.getElementById("cdkey"),
+      checkBtn: document.getElementById("checkBtn"),
+      resetBtn: document.getElementById("resetBtn"),
+      queryNotice: document.getElementById("queryNotice"),
+      completedCard: document.getElementById("completedCard"),
+      accountText: document.getElementById("accountText"),
+      completedAt: document.getElementById("completedAt"),
+      activateCard: document.getElementById("activateCard"),
+      sessionInfo: document.getElementById("sessionInfo"),
+      activateBtn: document.getElementById("activateBtn"),
+      activateNotice: document.getElementById("activateNotice")
+    };
+
+    let lockedCdkey = "";
+
+    function setNotice(el, text, type) {
+      el.textContent = text;
+      el.className = `notice${type ? ` ${type}` : ""}`;
+    }
+
+    function setLoading(button, loadingText, isLoading) {
+      if (isLoading) {
+        button.dataset.originText = button.textContent;
+        button.textContent = loadingText;
+        button.disabled = true;
+        return;
+      }
+      button.textContent = button.dataset.originText || button.textContent;
+      button.disabled = false;
+    }
+
+    function statusMessage(data) {
+      const status = Number(data && data.use_status);
+      if (status === 1) return "充值已完成 上号查看吧~";
+      if (status === -1) return "正在领取中 请稍后再查询";
+      if (status === -9) return "充值库存不足 请联系客服处理";
+      if (status === -999) return "CDK异常 请联系客服处理";
+      if (status === -1000) return "CDK已作废 请联系客服处理";
+      return "卡密无效或已失效。";
+    }
+
+    function renderResult(payload, fallbackMessage) {
+      const data = payload && payload.data && typeof payload.data === "object" ? payload.data : {};
+      const status = Number(data.use_status);
+
+      if (status === 1) {
+        els.accountText.textContent = data.account || "-";
+        els.completedAt.textContent = data.completed_at || "-";
+        els.completedCard.classList.add("show");
+      } else {
+        els.completedCard.classList.remove("show");
+      }
+
+      if (status === 0 && !data.in_cooldown) {
+        lockedCdkey = data.cdkey || els.cdkey.value.trim();
+        els.cdkey.value = lockedCdkey;
+        els.cdkey.disabled = true;
+        els.activateCard.classList.remove("hidden");
+        setNotice(els.queryNotice, "卡密可用，请继续提交 Session。", "success");
+      } else {
+        els.activateCard.classList.add("hidden");
+        const msg = data.status_hint || payload.msg || statusMessage(data) || fallbackMessage || "卡密不可用。";
+        setNotice(els.queryNotice, msg, status === 1 ? "success" : "error");
+      }
+    }
+
+    async function postJson(path, body) {
+      const response = await fetch(apiUrl(path), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const text = await response.text();
+      try {
+        return JSON.parse(text);
+      } catch (err) {
+        throw new Error(text || "服务返回异常，请稍后重试");
+      }
+    }
+
+    async function checkCdkey() {
+      const cdkey = els.cdkey.value.trim();
+      if (!cdkey) {
+        setNotice(els.queryNotice, "请先输入充值卡密。", "error");
+        return;
+      }
+      setLoading(els.checkBtn, "查询中...", true);
+      setNotice(els.queryNotice, "正在查询卡密状态，请稍候。");
+      try {
+        const result = await postJson("/check", { cdkey });
+        if (!result.success) {
+          els.activateCard.classList.add("hidden");
+          renderResult(result, "查询失败。");
+          setNotice(els.queryNotice, result.msg || "卡密查询失败。", "error");
+          return;
+        }
+        renderResult(result, "查询成功。");
+      } catch (err) {
+        setNotice(els.queryNotice, `查询失败：${err.message}`, "error");
+      } finally {
+        setLoading(els.checkBtn, "查询中...", false);
+      }
+    }
+
+    function validateSession(raw) {
+      if (!raw.trim()) throw new Error("请先粘贴账号 Session。");
+      try {
+        const parsed = JSON.parse(raw);
+        const planType = parsed && parsed.account && parsed.account.planType;
+        if (planType && planType !== "free") {
+          throw new Error(`当前账号 planType 为 ${planType}，接口只允许 free plan 提交。`);
+        }
+      } catch (err) {
+        if (err instanceof SyntaxError) throw new Error("Session 格式不正确，请复制页面显示的完整 JSON 内容。");
+        throw err;
+      }
+    }
+
+    async function activateCdkey() {
+      const cdkey = lockedCdkey || els.cdkey.value.trim();
+      const sessionInfo = els.sessionInfo.value.trim();
+      try {
+        validateSession(sessionInfo);
+      } catch (err) {
+        setNotice(els.activateNotice, err.message, "error");
+        return;
+      }
+      setLoading(els.activateBtn, "提交中...", true);
+      setNotice(els.activateNotice, "正在提交充值，请不要重复点击。");
+      try {
+        const result = await postJson("/activate", { cdkey, session_info: sessionInfo });
+        if (!result.success) {
+          setNotice(els.activateNotice, result.msg || "充值提交失败。", "error");
+          return;
+        }
+        renderResult(result, "充值成功。");
+        setNotice(els.activateNotice, result.msg || "充值成功，请上号查看 Plus 状态。", "success");
+        els.activateCard.classList.add("hidden");
+      } catch (err) {
+        setNotice(els.activateNotice, `提交失败：${err.message}`, "error");
+      } finally {
+        setLoading(els.activateBtn, "提交中...", false);
+      }
+    }
+
+    function resetFlow() {
+      lockedCdkey = "";
+      els.cdkey.disabled = false;
+      els.cdkey.value = "";
+      els.sessionInfo.value = "";
+      els.completedCard.classList.remove("show");
+      els.activateCard.classList.add("hidden");
+      setNotice(els.queryNotice, "请先填写卡密并查询状态。");
+      setNotice(els.activateNotice, "等待提交充值。");
+      els.cdkey.focus();
+    }
+
+    els.checkBtn.addEventListener("click", checkCdkey);
+    els.activateBtn.addEventListener("click", activateCdkey);
+    els.resetBtn.addEventListener("click", resetFlow);
+    els.cdkey.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") checkCdkey();
+    });
+  </script>
+</body>
+</html>
