@@ -339,15 +339,10 @@
     }
     .hidden { display: none !important; }
 
-    /* 手机端 wizard：第一步 / 第二步切换 */
-    .mobile-only { display: none; }
-    @media (max-width: 900px) {
-      .mobile-only { display: inline-flex; }
-      .card.mobile-step-hidden { display: none !important; }
-      .card.step-enter {
-        animation: stepEnter .28s ease-out both;
-      }
-    }
+    /* Wizard 切换：电脑端 + 手机端通用（电脑左侧操作指南保持显示，右侧只显示当前步骤） */
+    .mobile-only { display: inline-flex; }
+    .card.mobile-step-hidden { display: none !important; }
+    .card.step-enter { animation: stepEnter .28s ease-out both; }
     @keyframes stepEnter {
       from { opacity: 0; transform: translateY(12px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -556,8 +551,8 @@
         const wasHidden = els.activateCard.classList.contains("hidden");
         els.activateCard.classList.remove("hidden");
         setNotice(els.queryNotice, "卡密可用，请继续提交 Session。", "success");
-        // 手机端 wizard：隐藏第一步，淡入第二步
-        if (wasHidden && window.matchMedia("(max-width: 900px)").matches) {
+        // Wizard 切换：隐藏第一步，淡入第二步（电脑/手机都用）
+        if (wasHidden) {
           els.step1Card.classList.add("mobile-step-hidden");
           els.activateCard.classList.remove("step-enter");
           // 触发重排让动画重新播放
