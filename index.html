@@ -534,8 +534,16 @@
         lockedCdkey = data.cdkey || els.cdkey.value.trim();
         els.cdkey.value = lockedCdkey;
         els.cdkey.disabled = true;
+        const wasHidden = els.activateCard.classList.contains("hidden");
         els.activateCard.classList.remove("hidden");
         setNotice(els.queryNotice, "卡密可用，请继续提交 Session。", "success");
+        // 手机端：第二步刚出现时，自动平滑滚动过去
+        if (wasHidden && window.matchMedia("(max-width: 900px)").matches) {
+          setTimeout(() => {
+            els.activateCard.scrollIntoView({ behavior: "smooth", block: "start" });
+            els.sessionInfo.focus({ preventScroll: true });
+          }, 120);
+        }
       } else {
         els.activateCard.classList.add("hidden");
         const msg = data.status_hint || payload.msg || statusMessage(data) || fallbackMessage || "卡密不可用。";
