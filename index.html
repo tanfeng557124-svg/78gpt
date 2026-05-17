@@ -608,29 +608,111 @@
 
     function validateSession(raw) {
       if (!raw.trim()) throw new Error("请先粘贴账号 Session。");
+      let parsed;
       try {
-        const parsed = JSON.parse(raw);
-        const planType = parsed && parsed.account && parsed.account.planType;
-        if (planType && planType !== "free") {
-          throw new Error(`当前账号 planType 为 ${planType}，接口只允许 free plan 提交。`);
-        }
-      } catch (err) {
-        if (err instanceof SyntaxError) throw new Error("Session 格式不正确，请复制页面显示的完整 JSON 内容。");
-        throw err;
+        parsed = JSON.parse(raw);
+      } catch {
+        throw new Error("Session 格式不正确，请复制页面显示的完整 JSON 内容。");
       }
+      const planType = parsed && parsed.account && parsed.account.planType;
+      if (planType && planType !== "free") {
+        throw new Error(`当前账号 planType 为 ${planType}，接口只允许 free plan 提交。`);
+      }
+      const email = (parsed && parsed.user && parsed.user.email) || "";
+      const userId = (parsed && parsed.account && parsed.account.id) || "";
+      return { email, userId, planType: planType || "free", parsed };
+    }
+
+    // 邮箱二次确认 — 防止把卡密充错号
+    function confirmEmail({ email, userId, planType }) {
+      return new Promise(resolve => {
+        const overlay = document.createElement("div");
+        overlay.style.cssText = "position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;";
+        overlay.innerHTML = `
+          <div style="background:#fff;border-radius:14px;padding:24px;max-width:440px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.25);">
+            <div style="font-size:42px;text-align:center;margin-bottom:8px;">📧</div>
+            <h3 style="font-size:18px;font-weight:800;text-align:center;margin-bottom:14px;color:#111;">确认充值账号</h3>
+            <p style="color:#6b7280;font-size:13.5px;text-align:center;margin-bottom:14px;line-height:1.6;">
+              卡密将充值到下面这个 ChatGPT 账号。<br/>
+              <strong style="color:#dc2626;">充错号无法撤销，请仔细核对！</strong>
+            </p>
+            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px;margin-bottom:16px;">
+              <div style="font-size:11.5px;color:#9ca3af;margin-bottom:3px;">账号邮箱</div>
+              <div style="font-size:17px;font-weight:800;color:#111;word-break:break-all;user-select:all;">${escapeText(email) || "<span style='color:#9ca3af'>未识别到邮箱</span>"}</div>
+              <div style="font-size:11.5px;color:#9ca3af;margin-top:10px;margin-bottom:3px;">用户 ID</div>
+              <div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#6b7280;word-break:break-all;">${escapeText(userId) || "-"}</div>
+              <div style="font-size:11.5px;color:#9ca3af;margin-top:10px;margin-bottom:3px;">当前套餐</div>
+              <div style="font-size:13px;font-weight:700;color:${planType === 'free' ? '#065f46' : '#92400e'};">${escapeText(planType)}${planType === 'free' ? '（可充值）' : '（异常）'}</div>
+            </div>
+            <div style="display:flex;gap:10px;">
+              <button type="button" id="emailCancelBtn" style="flex:1;background:#fff;border:1px solid #e5e7eb;color:#111;border-radius:10px;padding:11px;font-weight:700;cursor:pointer;font-size:14px;">取消</button>
+              <button type="button" id="emailConfirmBtn" style="flex:2;background:#00a86b;color:#000;border:0;border-radius:10px;padding:11px;font-weight:800;cursor:pointer;font-size:14px;">确认是这个账号 →</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+        overlay.querySelector("#emailCancelBtn").addEventListener("click", () => { document.body.removeChild(overlay); resolve(false); });
+        overlay.querySelector("#emailConfirmBtn").addEventListener("click", () => { document.body.removeChild(overlay); resolve(true); });
+      });
+    }
+
+    function escapeText(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+    // 充值成功大卡
+    function showActivateSuccess(data, msg) {
+      const account = (data && data.account) || "";
+      const giftName = (data && data.gift_name) || "ChatGPT Plus";
+      const completedAt = (data && data.completed_at) || "";
+      const overlay = document.createElement("div");
+      overlay.style.cssText = "position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;";
+      overlay.innerHTML = `
+        <div style="background:#fff;border-radius:16px;padding:30px 24px;max-width:460px;width:100%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.25);">
+          <div style="width:72px;height:72px;border-radius:50%;background:rgba(16,185,129,.12);display:flex;align-items:center;justify-content:center;font-size:38px;margin:0 auto 14px;color:#10b981;">✓</div>
+          <h2 style="font-size:22px;font-weight:800;margin-bottom:8px;color:#111;">充值成功</h2>
+          <p style="color:#6b7280;font-size:14px;margin-bottom:20px;">${escapeText(msg || "请上号刷新或重新登录查看 Plus 状态")}</p>
+          <div style="background:#f0fdf4;border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:14px;margin-bottom:14px;text-align:left;">
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px;">
+              <span style="color:#6b7280;">商品</span><span style="font-weight:700;">${escapeText(giftName)}</span>
+              <span style="color:#6b7280;">账号</span><span style="font-weight:700;word-break:break-all;user-select:all;">${escapeText(account) || "-"}</span>
+              <span style="color:#6b7280;">完成时间</span><span style="font-weight:700;">${escapeText(completedAt) || "-"}</span>
+            </div>
+          </div>
+          <div style="background:#fffbeb;border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:12px;margin-bottom:18px;font-size:12.5px;color:#92400e;text-align:left;line-height:1.6;">
+            <strong>下一步：</strong><br/>
+            1. 打开 ChatGPT 并刷新页面 / 重新登录<br/>
+            2. 左下角应显示「ChatGPT Plus」标识<br/>
+            3. 如未生效，等待 1-2 分钟（OpenAI 偶有延迟）
+          </div>
+          <div style="display:flex;gap:10px;">
+            <a href="https://chatgpt.com" target="_blank" rel="noopener noreferrer" style="flex:1;background:#00a86b;color:#000;text-decoration:none;border-radius:10px;padding:11px;font-weight:800;font-size:14px;">打开 ChatGPT →</a>
+            <button type="button" id="successClose" style="flex:1;background:#fff;border:1px solid #e5e7eb;color:#111;border-radius:10px;padding:11px;font-weight:700;cursor:pointer;font-size:14px;">关闭</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      overlay.querySelector("#successClose").addEventListener("click", () => document.body.removeChild(overlay));
     }
 
     async function activateCdkey() {
       const cdkey = lockedCdkey || els.cdkey.value.trim();
       const sessionInfo = els.sessionInfo.value.trim();
+      let sessionMeta;
       try {
-        validateSession(sessionInfo);
+        sessionMeta = validateSession(sessionInfo);
       } catch (err) {
         setNotice(els.activateNotice, err.message, "error");
         return;
       }
+
+      // 邮箱二次确认
+      const ok = await confirmEmail(sessionMeta);
+      if (!ok) {
+        setNotice(els.activateNotice, "已取消，请确认账号后重新提交。", "warning");
+        return;
+      }
+
       setLoading(els.activateBtn, "提交中...", true);
-      setNotice(els.activateNotice, "正在提交充值，请不要重复点击。");
+      setNotice(els.activateNotice, `正在为 ${sessionMeta.email || "该账号"} 充值，请勿重复点击...`);
       try {
         const result = await postJson("/activate", { cdkey, session_info: sessionInfo });
         if (!result.success) {
@@ -640,6 +722,7 @@
         renderResult(result, "充值成功。");
         setNotice(els.activateNotice, result.msg || "充值成功，请上号查看 Plus 状态。", "success");
         els.activateCard.classList.add("hidden");
+        showActivateSuccess(result.data || {}, result.msg);
       } catch (err) {
         setNotice(els.activateNotice, `提交失败：${err.message}`, "error");
       } finally {
