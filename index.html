@@ -614,20 +614,34 @@
       } catch {
         throw new Error("Session 格式不正确，请复制页面显示的完整 JSON 内容。");
       }
-      const planType = parsed && parsed.account && parsed.account.planType;
-      if (planType && planType !== "free") {
-        throw new Error(`当前账号 planType 为 ${planType}，接口只允许 free plan 提交。`);
-      }
+      const planType = (parsed && parsed.account && parsed.account.planType) || "";
       const email = (parsed && parsed.user && parsed.user.email) || "";
       const userId = (parsed && parsed.account && parsed.account.id) || "";
-      return { email, userId, planType: planType || "free", parsed };
+      // planType 为空或 free → 普通免费账号正常充值；其它值 → 已是付费会员，需 force 强制充值
+      const isMember = !!planType && planType !== "free";
+      return { email, userId, planType: planType || "free", isMember, parsed };
     }
 
     // 邮箱二次确认 — 防止把卡密充错号
-    function confirmEmail({ email, userId, planType }) {
+    function confirmEmail({ email, userId, planType, isMember }) {
       return new Promise(resolve => {
         const overlay = document.createElement("div");
         overlay.style.cssText = "position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;";
+        // 当前状态：免费版可正常充值；已是会员则需勾选确认后强制充值
+        const planLine = isMember
+          ? `<div style="font-size:13px;font-weight:700;color:#b45309;">已是会员（${escapeText(planType)}）</div>`
+          : `<div style="font-size:13px;font-weight:700;color:#065f46;">免费版 · 可正常充值</div>`;
+        const memberWarn = isMember ? `
+            <div style="background:#fff7ed;border:1px solid rgba(245,158,11,.35);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;color:#92400e;line-height:1.6;">
+              <strong>⚠️ 该账号当前已是会员</strong><br/>
+              继续将<strong>强制覆盖充值（force）</strong>，新增时长可能不会在原有会员基础上叠加，也可能造成卡密浪费。请确认你已了解此风险。
+            </div>
+            <label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:16px;font-size:12.5px;color:#374151;cursor:pointer;">
+              <input type="checkbox" id="forceAck" style="margin-top:2px;width:16px;height:16px;flex-shrink:0;cursor:pointer;" />
+              <span>我已知晓该账号已是会员，仍要强制充值</span>
+            </label>` : "";
+        const confirmLabel = isMember ? "强制充值 →" : "确认是这个账号 →";
+        const confirmBg = isMember ? "#f59e0b" : "#00a86b";
         overlay.innerHTML = `
           <div style="background:#fff;border-radius:14px;padding:24px;max-width:440px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.25);">
             <div style="font-size:42px;text-align:center;margin-bottom:8px;">📧</div>
@@ -641,35 +655,63 @@
               <div style="font-size:17px;font-weight:800;color:#111;word-break:break-all;user-select:all;">${escapeText(email) || "<span style='color:#9ca3af'>未识别到邮箱</span>"}</div>
               <div style="font-size:11.5px;color:#9ca3af;margin-top:10px;margin-bottom:3px;">用户 ID</div>
               <div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#6b7280;word-break:break-all;">${escapeText(userId) || "-"}</div>
-              <div style="font-size:11.5px;color:#9ca3af;margin-top:10px;margin-bottom:3px;">当前套餐</div>
-              <div style="font-size:13px;font-weight:700;color:${planType === 'free' ? '#065f46' : '#92400e'};">${escapeText(planType)}${planType === 'free' ? '（可充值）' : '（异常）'}</div>
+              <div style="font-size:11.5px;color:#9ca3af;margin-top:10px;margin-bottom:3px;">当前状态</div>
+              ${planLine}
             </div>
+            ${memberWarn}
             <div style="display:flex;gap:10px;">
               <button type="button" id="emailCancelBtn" style="flex:1;background:#fff;border:1px solid #e5e7eb;color:#111;border-radius:10px;padding:11px;font-weight:700;cursor:pointer;font-size:14px;">取消</button>
-              <button type="button" id="emailConfirmBtn" style="flex:2;background:#00a86b;color:#000;border:0;border-radius:10px;padding:11px;font-weight:800;cursor:pointer;font-size:14px;">确认是这个账号 →</button>
+              <button type="button" id="emailConfirmBtn" style="flex:2;background:${confirmBg};color:#000;border:0;border-radius:10px;padding:11px;font-weight:800;cursor:pointer;font-size:14px;${isMember ? 'opacity:.5;' : ''}"${isMember ? ' disabled' : ''}>${confirmLabel}</button>
             </div>
           </div>
         `;
         document.body.appendChild(overlay);
+        const confirmBtn = overlay.querySelector("#emailConfirmBtn");
+        if (isMember) {
+          const ack = overlay.querySelector("#forceAck");
+          ack.addEventListener("change", () => {
+            confirmBtn.disabled = !ack.checked;
+            confirmBtn.style.opacity = ack.checked ? "1" : ".5";
+          });
+        }
         overlay.querySelector("#emailCancelBtn").addEventListener("click", () => { document.body.removeChild(overlay); resolve(false); });
-        overlay.querySelector("#emailConfirmBtn").addEventListener("click", () => { document.body.removeChild(overlay); resolve(true); });
+        confirmBtn.addEventListener("click", () => {
+          if (confirmBtn.disabled) return;
+          document.body.removeChild(overlay);
+          resolve(true);
+        });
       });
     }
 
     function escapeText(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
     // 充值成功大卡
-    function showActivateSuccess(data, msg) {
+    function showActivateSuccess(data, msg, recheckFailed) {
       const account = (data && data.account) || "";
       const giftName = (((data && data.gift_name) || "ChatGPT Plus").replace(/土区订阅/g, "").replace(/\s{2,}/g, " ").trim()) || "ChatGPT Plus";
       const completedAt = (data && data.completed_at) || "";
       const overlay = document.createElement("div");
       overlay.style.cssText = "position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;";
+      // recheckFailed：充值已成功但后端 verify 复查未确认到会员，换成提醒样式
+      const iconBg = recheckFailed ? "rgba(245,158,11,.12)" : "rgba(16,185,129,.12)";
+      const iconColor = recheckFailed ? "#f59e0b" : "#10b981";
+      const iconChar = recheckFailed ? "!" : "✓";
+      const title = recheckFailed ? "充值成功 · 请复查会员" : "充值成功";
+      const subtitle = msg || (recheckFailed ? "充值成功，请重新登录账号查看会员状态" : "请上号刷新或重新登录查看 Plus 状态");
+      const nextSteps = recheckFailed
+        ? `<strong>重要：系统未能自动确认会员状态</strong><br/>
+            1. 请<strong>完全退出</strong> ChatGPT 账号后重新登录<br/>
+            2. 重新登录后查看左下角是否显示「ChatGPT Plus」<br/>
+            3. 如仍未显示，等待 1-2 分钟再试，或联系客服核对`
+        : `<strong>下一步：</strong><br/>
+            1. 打开 ChatGPT 并刷新页面 / 重新登录<br/>
+            2. 左下角应显示「ChatGPT Plus」标识<br/>
+            3. 如未生效，等待 1-2 分钟（OpenAI 偶有延迟）`;
       overlay.innerHTML = `
         <div style="background:#fff;border-radius:16px;padding:30px 24px;max-width:460px;width:100%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.25);">
-          <div style="width:72px;height:72px;border-radius:50%;background:rgba(16,185,129,.12);display:flex;align-items:center;justify-content:center;font-size:38px;margin:0 auto 14px;color:#10b981;">✓</div>
-          <h2 style="font-size:22px;font-weight:800;margin-bottom:8px;color:#111;">充值成功</h2>
-          <p style="color:#6b7280;font-size:14px;margin-bottom:20px;">${escapeText(msg || "请上号刷新或重新登录查看 Plus 状态")}</p>
+          <div style="width:72px;height:72px;border-radius:50%;background:${iconBg};display:flex;align-items:center;justify-content:center;font-size:38px;margin:0 auto 14px;color:${iconColor};">${iconChar}</div>
+          <h2 style="font-size:22px;font-weight:800;margin-bottom:8px;color:#111;">${escapeText(title)}</h2>
+          <p style="color:#6b7280;font-size:14px;margin-bottom:20px;">${escapeText(subtitle)}</p>
           <div style="background:#f0fdf4;border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:14px;margin-bottom:14px;text-align:left;">
             <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px;">
               <span style="color:#6b7280;">商品</span><span style="font-weight:700;">${escapeText(giftName)}</span>
@@ -678,10 +720,7 @@
             </div>
           </div>
           <div style="background:#fffbeb;border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:12px;margin-bottom:18px;font-size:12.5px;color:#92400e;text-align:left;line-height:1.6;">
-            <strong>下一步：</strong><br/>
-            1. 打开 ChatGPT 并刷新页面 / 重新登录<br/>
-            2. 左下角应显示「ChatGPT Plus」标识<br/>
-            3. 如未生效，等待 1-2 分钟（OpenAI 偶有延迟）
+            ${nextSteps}
           </div>
           <div style="display:flex;gap:10px;">
             <a href="https://chatgpt.com" target="_blank" rel="noopener noreferrer" style="flex:1;background:#00a86b;color:#000;text-decoration:none;border-radius:10px;padding:11px;font-weight:800;font-size:14px;">打开 ChatGPT →</a>
@@ -718,15 +757,19 @@
       setLoading(els.activateBtn, "提交中...", true);
       setNotice(els.activateNotice, `正在为 ${sessionMeta.email || "该账号"} 充值，请勿重复点击...`);
       try {
-        const result = await postJson("/activate", { cdkey, session_info: sessionInfo });
+        const body = { cdkey, session_info: sessionInfo };
+        if (sessionMeta.isMember) body.force = 1; // 已是会员 → 跳过 plan 校验强制充值
+        const result = await postJson("/activate", body);
         if (!result.success) {
           setNotice(els.activateNotice, result.msg || "充值提交失败。", "error");
           return;
         }
         renderResult(result, "充值成功。");
-        setNotice(els.activateNotice, result.msg || "充值成功，请上号查看 Plus 状态。", "success");
+        // api2：activate 成功后后端会复查订阅状态，复查未通过时 msg 含「复查失败」
+        const recheckFailed = !!(result.msg && result.msg.indexOf("复查失败") !== -1);
+        setNotice(els.activateNotice, result.msg || "充值成功，请上号查看 Plus 状态。", recheckFailed ? "warning" : "success");
         els.activateCard.classList.add("hidden");
-        showActivateSuccess(result.data || {}, result.msg);
+        showActivateSuccess(result.data || {}, result.msg, recheckFailed);
       } catch (err) {
         setNotice(els.activateNotice, `提交失败：${err.message}`, "error");
       } finally {
