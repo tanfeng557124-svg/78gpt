@@ -551,6 +551,7 @@
         const wasHidden = els.activateCard.classList.contains("hidden");
         els.activateCard.classList.remove("hidden");
         setNotice(els.queryNotice, "卡密可用，请继续提交 Session。", "success");
+        saveState();
         // Wizard 切换：隐藏第一步，淡入第二步（电脑/手机都用）
         if (wasHidden) {
           els.step1Card.classList.add("mobile-step-hidden");
@@ -769,6 +770,7 @@
         const recheckFailed = !!(result.msg && result.msg.indexOf("复查失败") !== -1);
         setNotice(els.activateNotice, result.msg || "充值成功，请上号查看 Plus 状态。", recheckFailed ? "warning" : "success");
         els.activateCard.classList.add("hidden");
+        clearState();
         showActivateSuccess(result.data || {}, result.msg, recheckFailed);
       } catch (err) {
         setNotice(els.activateNotice, `提交失败：${err.message}`, "error");
@@ -778,6 +780,7 @@
     }
 
     function resetFlow() {
+      clearState();
       lockedCdkey = "";
       els.cdkey.disabled = false;
       els.cdkey.value = "";
@@ -798,8 +801,54 @@
       els.step1Card.classList.remove("mobile-step-hidden");
       els.cdkey.disabled = false;
       lockedCdkey = "";
+      saveState();
       window.scrollTo({ top: 0, behavior: "smooth" });
       setTimeout(() => els.cdkey.focus({ preventScroll: true }), 200);
+    }
+
+    // ===== 进度持久化 =====
+    // 手机上切到微信复制 JSON 时，浏览器常会把后台页面回收；切回来页面被整体重载，
+    // 内存里的卡密 / 当前步骤就全丢了（表现为「页面不见了、刷新也没了」）。
+    // 这里把进度存到 localStorage，页面重载后自动恢复到上次的步骤。
+    const STATE_KEY = "gpt_recharge_progress_v1";
+    const STATE_TTL = 30 * 60 * 1000; // 仅恢复 30 分钟内的进度
+
+    function saveState() {
+      try {
+        const onStep2 = !els.activateCard.classList.contains("hidden");
+        localStorage.setItem(STATE_KEY, JSON.stringify({
+          t: Date.now(),
+          step: onStep2 ? 2 : 1,
+          cdkey: els.cdkey.value,
+          lockedCdkey: lockedCdkey,
+          sessionInfo: els.sessionInfo.value
+        }));
+      } catch (e) { /* 隐私模式等 localStorage 不可用时静默忽略 */ }
+    }
+
+    function clearState() {
+      try { localStorage.removeItem(STATE_KEY); } catch (e) {}
+    }
+
+    function restoreState() {
+      let s;
+      try { s = JSON.parse(localStorage.getItem(STATE_KEY) || "null"); }
+      catch (e) { return; }
+      if (!s || !s.t || Date.now() - s.t > STATE_TTL) { clearState(); return; }
+
+      if (s.step === 2 && s.lockedCdkey) {
+        // 恢复到第二步：卡密已验证，等待粘贴 Session
+        lockedCdkey = s.lockedCdkey;
+        els.cdkey.value = s.lockedCdkey;
+        els.cdkey.disabled = true;
+        els.sessionInfo.value = s.sessionInfo || "";
+        els.activateCard.classList.remove("hidden");
+        els.step1Card.classList.add("mobile-step-hidden");
+        setNotice(els.queryNotice, "卡密可用，请继续提交 Session。", "success");
+        setNotice(els.activateNotice, "已自动恢复上次进度，请粘贴 Session 后提交。", "success");
+      } else if (s.cdkey) {
+        els.cdkey.value = s.cdkey;
+      }
     }
 
     els.checkBtn.addEventListener("click", checkCdkey);
@@ -809,6 +858,17 @@
     els.cdkey.addEventListener("keydown", (event) => {
       if (event.key === "Enter") checkCdkey();
     });
+
+    // 输入即保存；切到后台 / 页面卸载前再保存一次（手机被回收前最后的时机）
+    els.cdkey.addEventListener("input", saveState);
+    els.sessionInfo.addEventListener("input", saveState);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") saveState();
+    });
+    window.addEventListener("pagehide", saveState);
+
+    // 页面加载 / 被重载后，自动恢复上次进度
+    restoreState();
   </script>
 </body>
 </html>
